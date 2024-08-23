@@ -17,6 +17,7 @@ function CandySprite(x, y, image) {
   this.y = y;
   this.image = image;
   this.isDragging = false; // Added for tracking dragging status
+  this.checked = false; // Added for tracking checked status in match detection
 }
 
 // Draw the candy sprite
@@ -82,6 +83,7 @@ function canSwapCandies(candy1, candy2) {
 }
 
 // Check for matches and handle matched candies
+// Check for matches and handle matched candies
 function checkForMatches() {
   const matchedCandies = [];
 
@@ -145,7 +147,17 @@ function checkForMatches() {
     }
     updateGrid(); // Update grid after removing candies
   }
+
+  // Reset checked state for all candies
+  for (let col = 0; col < gridCols; col++) {
+    for (let row = 0; row < gridRows; row++) {
+      if (candySprites[col][row]) {
+        candySprites[col][row].checked = false;
+      }
+    }
+  }
 }
+
 
 // Update grid after matches are removed
 function updateGrid() {
@@ -180,50 +192,58 @@ function swapCandies(candy1, candy2) {
   console.log('Swapped candies:', candy1, candy2);
 }
 
-if ('ontouchstart' in window){
-  canvas.addEventListener('ontouchstart', (event) => { 
-    const mouseY = event.clientY - canvas.offsetTop;
+// Drag and drop functionality for both touch and mouse events
+
+if ('ontouchstart' in window) {
+  canvas.addEventListener('touchstart', (event) => { 
+    const touch = event.touches[0];
+    const mouseX = touch.clientX - canvas.offsetLeft;
+    const mouseY = touch.clientY - canvas.offsetTop;
   
     selectedCandy = findCandyAt(mouseX, mouseY);
     if (selectedCandy) {
       selectedCandy.isDragging = true;
-      console.log('mousedown:', selectedCandy, mouseX, mouseY);
+      console.log('touchstart:', selectedCandy, mouseX, mouseY);
       isDragging = true;
     }
   });
-  canvas.addEventListener('ontouchmove', (event) => {  
-    console.log('mousemove:', selectedCandy);
-    let newX = event.clientX - canvas.offsetLeft - gridSize / 2;
-    let newY = event.clientY - canvas.offsetTop - gridSize / 2;
+  canvas.addEventListener('touchmove', (event) => {  
+    if (isDragging && selectedCandy) {
+      const touch = event.touches[0];
+      let newX = touch.clientX - canvas.offsetLeft - gridSize / 2;
+      let newY = touch.clientY - canvas.offsetTop - gridSize / 2;
 
-    // Constrain the sprite within the grid
-    newX = Math.max(0, Math.min(newX, (gridCols - 1) * gridSize));
-    newY = Math.max(0, Math.min(newY, (gridRows - 1) * gridSize));
+      // Constrain the sprite within the grid
+      newX = Math.max(0, Math.min(newX, (gridCols - 1) * gridSize));
+      newY = Math.max(0, Math.min(newY, (gridRows - 1) * gridSize));
 
-    selectedCandy.x = newX;
-    selectedCandy.y = newY;
-    drawCandy();
-    
-  });
-  canvas.addEventListener('ontouchend', (event) => { 
-    selectedCandy.isDragging = false;
-    isDragging = false;
-    console.log('mouseup:', selectedCandy);
-
-    if (clickedCandy && canSwapCandies(selectedCandy, clickedCandy)) {
-      console.log('Swapping candies:', selectedCandy, clickedCandy);
-      secondSelectedCandy = clickedCandy;
-      swapCandies(selectedCandy, secondSelectedCandy);
-      checkForMatches();
+      selectedCandy.x = newX;
+      selectedCandy.y = newY;
+      drawCandy();
     }
-    selectedCandy = null;
-    secondSelectedCandy = null;
+  });
+  canvas.addEventListener('touchend', (event) => { 
+    if (selectedCandy) {
+      selectedCandy.isDragging = false;
+      isDragging = false;
+      console.log('touchend:', selectedCandy);
+
+      if (clickedCandy && canSwapCandies(selectedCandy, clickedCandy)) {
+        console.log('Swapping candies:', selectedCandy, clickedCandy);
+        secondSelectedCandy = clickedCandy;
+        swapCandies(selectedCandy, secondSelectedCandy);
+        checkForMatches();
+      }
+      selectedCandy = null;
+      secondSelectedCandy = null;
+    }
 
     drawCandy();
   });
 
-}else{
-  canvas.addEventListener('mousedown', (event) => {const mouseX = event.clientX - canvas.offsetLeft;
+} else {
+  canvas.addEventListener('mousedown', (event) => {
+    const mouseX = event.clientX - canvas.offsetLeft;
     const mouseY = event.clientY - canvas.offsetTop;
   
     selectedCandy = findCandyAt(mouseX, mouseY);
@@ -236,41 +256,43 @@ if ('ontouchstart' in window){
     }
   });
 
-  canvas.addEventListener('mouseup', (event) => { if (isDragging && selectedCandy) {
-    selectedCandy.isDragging = false;
-    isDragging = false;
-    console.log('mouseup:', selectedCandy);
-
-    if (clickedCandy && canSwapCandies(selectedCandy, clickedCandy)) {
-      console.log('Swapping candies:', selectedCandy, clickedCandy);
-      secondSelectedCandy = clickedCandy;
-      swapCandies(selectedCandy, secondSelectedCandy);
-      checkForMatches();
+  canvas.addEventListener('mouseup', (event) => { 
+    if (isDragging && selectedCandy) {
+      selectedCandy.isDragging = false;
+      isDragging = false;
+      console.log('mouseup:', selectedCandy);
+      
+      if (clickedCandy && canSwapCandies(selectedCandy, clickedCandy)) {
+        console.log('Swapping candies:', selectedCandy, clickedCandy);
+        secondSelectedCandy = clickedCandy;
+        swapCandies(selectedCandy, secondSelectedCandy);
+        checkForMatches();
+      }
+      selectedCandy = null;
+      secondSelectedCandy = null;
+    } else {
+      console.log('No candy selected at mouseup:', selectedCandy);
     }
-    selectedCandy = null;
-    secondSelectedCandy = null;
-  } else {
-    console.log('No candy selected at mouseup:', selectedCandy);
-  }
-  drawCandy();
-});
-
-  canvas.addEventListener('mousemove', (event) => {   if (isDragging && selectedCandy) {
-    console.log('mousemove:', selectedCandy);
-    let newX = event.clientX - canvas.offsetLeft - gridSize / 2;
-    let newY = event.clientY - canvas.offsetTop - gridSize / 2;
-
-    // Constrain the sprite within the grid
-    newX = Math.max(0, Math.min(newX, (gridCols - 1) * gridSize));
-    newY = Math.max(0, Math.min(newY, (gridRows - 1) * gridSize));
-
-    selectedCandy.x = newX;
-    selectedCandy.y = newY;
     drawCandy();
-  } else {
-    console.log('No candy being dragged at mousemove:', selectedCandy);
-  }
-});
+  });
+
+  canvas.addEventListener('mousemove', (event) => {   
+    if (isDragging && selectedCandy) {
+      console.log('mousemove:', selectedCandy);
+      let newX = event.clientX - canvas.offsetLeft - gridSize / 2;
+      let newY = event.clientY - canvas.offsetTop - gridSize / 2;
+      
+      // Constrain the sprite within the grid
+      newX = Math.max(0, Math.min(newX, (gridCols - 1) * gridSize));
+      newY = Math.max(0, Math.min(newY, (gridRows - 1) * gridSize));
+
+      selectedCandy.x = newX;
+      selectedCandy.y = newY;
+      drawCandy();
+    } else {
+      console.log('No candy being dragged at mousemove:', selectedCandy);
+    }
+  });
 }
 
 // Initialize the canvas
