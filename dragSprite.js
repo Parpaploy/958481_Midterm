@@ -193,7 +193,6 @@ function swapCandies(candy1, candy2) {
 }
 
 // Drag and drop functionality for both touch and mouse events
-
 if ('ontouchstart' in window) {
   canvas.addEventListener('touchstart', (event) => { 
     const touch = event.touches[0];
