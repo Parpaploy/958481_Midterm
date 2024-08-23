@@ -8,7 +8,6 @@ const gridRows = 8;
 let candySprites = []; // Array to hold candy sprite objects
 let selectedCandy = null; // Track the selected candy
 let secondSelectedCandy = null;
-let clickedCandy = null;
 let isDragging = false;
 
 // CandySprite constructor
@@ -16,8 +15,8 @@ function CandySprite(x, y, image) {
   this.x = x;
   this.y = y;
   this.image = image;
-  this.isDragging = false; // Added for tracking dragging status
-  this.checked = false; // Added for tracking checked status in match detection
+  this.isDragging = false;
+  this.checked = false;
 }
 
 // Draw the candy sprite
@@ -25,12 +24,12 @@ CandySprite.prototype.draw = function() {
   ctx.drawImage(this.image, this.x, this.y, gridSize, gridSize);
 };
 
-// Initialize candy sprites (replace with your candy images)
+// Initialize candy sprites
 for (let i = 0; i < gridCols; i++) {
   candySprites.push([]);
   for (let j = 0; j < gridRows; j++) {
     const candyImage = new Image();
-    candyImage.src = `_match01/part${Math.floor(Math.random() * 12) + 1}.png`; // Example candy images
+    candyImage.src = `_match01/part${Math.floor(Math.random() * 12) + 1}.png`;
     candySprites[i].push(new CandySprite(i * gridSize, j * gridSize, candyImage));
   }
 }
@@ -39,6 +38,7 @@ for (let i = 0; i < gridCols; i++) {
 function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   // Draw grid lines (optional)
+  ctx.beginPath();
   for (let i = 0; i <= gridCols; i++) {
     ctx.moveTo(i * gridSize, 0);
     ctx.lineTo(i * gridSize, gridRows * gridSize);
@@ -83,7 +83,6 @@ function canSwapCandies(candy1, candy2) {
 }
 
 // Check for matches and handle matched candies
-// Check for matches and handle matched candies
 function checkForMatches() {
   const matchedCandies = [];
 
@@ -95,44 +94,44 @@ function checkForMatches() {
 
   // Check horizontal matches
   for (let row = 0; row < gridRows; row++) {
-    let startCol = 0;
-    while (startCol < gridCols) {
-      const currentCandy = candySprites[startCol][row];
-      if (currentCandy) {
-        let endCol = startCol;
-        while (endCol < gridCols && candySprites[endCol][row] && candySprites[endCol][row].image.src === currentCandy.image.src) {
-          endCol++;
-        }
-        if (endCol - startCol >= 3) {
-          for (let col = startCol; col < endCol; col++) {
-            addMatch(candySprites[col][row]);
+    let count = 1;
+    for (let col = 0; col < gridCols - 1; col++) {
+      if (candySprites[col][row].image.src === candySprites[col + 1][row].image.src) {
+        count++;
+      } else {
+        if (count >= 3) {
+          for (let i = 0; i < count; i++) {
+            addMatch(candySprites[col - i][row]);
           }
         }
-        startCol = endCol;
-      } else {
-        startCol++;
+        count = 1;
+      }
+    }
+    if (count >= 3) {
+      for (let i = 0; i < count; i++) {
+        addMatch(candySprites[gridCols - 1 - i][row]);
       }
     }
   }
 
   // Check vertical matches
   for (let col = 0; col < gridCols; col++) {
-    let startRow = 0;
-    while (startRow < gridRows) {
-      const currentCandy = candySprites[col][startRow];
-      if (currentCandy) {
-        let endRow = startRow;
-        while (endRow < gridRows && candySprites[col][endRow] && candySprites[col][endRow].image.src === currentCandy.image.src) {
-          endRow++;
-        }
-        if (endRow - startRow >= 3) {
-          for (let row = startRow; row < endRow; row++) {
-            addMatch(candySprites[col][row]);
+    let count = 1;
+    for (let row = 0; row < gridRows - 1; row++) {
+      if (candySprites[col][row].image.src === candySprites[col][row + 1].image.src) {
+        count++;
+      } else {
+        if (count >= 3) {
+          for (let i = 0; i < count; i++) {
+            addMatch(candySprites[col][row - i]);
           }
         }
-        startRow = endRow;
-      } else {
-        startRow++;
+        count = 1;
+      }
+    }
+    if (count >= 3) {
+      for (let i = 0; i < count; i++) {
+        addMatch(candySprites[col][gridRows - 1 - i]);
       }
     }
   }
@@ -146,37 +145,31 @@ function checkForMatches() {
       candySprites[col][row] = null; // Remove matched candy
     }
     updateGrid(); // Update grid after removing candies
+    return true;
   }
 
-  // Reset checked state for all candies
-  for (let col = 0; col < gridCols; col++) {
-    for (let row = 0; row < gridRows; row++) {
-      if (candySprites[col][row]) {
-        candySprites[col][row].checked = false;
-      }
-    }
-  }
+  return false;
 }
-
 
 // Update grid after matches are removed
 function updateGrid() {
   for (let col = 0; col < gridCols; col++) {
+    let emptySpaces = 0;
     for (let row = gridRows - 1; row >= 0; row--) {
       if (candySprites[col][row] === null) {
-        // Move candies down
-        for (let r = row - 1; r >= 0; r--) {
-          if (candySprites[col][r] !== null) {
-            candySprites[col][r].y += gridSize;
-            candySprites[col][r + 1] = candySprites[col][r];
-            candySprites[col][r] = null;
-          }
-        }
-        // Create new candy at the top
-        const newCandyImage = new Image();
-        newCandyImage.src = `_match01/part${Math.floor(Math.random() * 12) + 1}.png`;
-        candySprites[col][0] = new CandySprite(col * gridSize, 0, newCandyImage);
+        emptySpaces++;
+      } else if (emptySpaces > 0) {
+        candySprites[col][row + emptySpaces] = candySprites[col][row];
+        candySprites[col][row + emptySpaces].y += emptySpaces * gridSize;
+        candySprites[col][row] = null;
       }
+    }
+    
+    // Create new candies at the top
+    for (let i = 0; i < emptySpaces; i++) {
+      const newCandyImage = new Image();
+      newCandyImage.src = `_match01/part${Math.floor(Math.random() * 12) + 1}.png`;
+      candySprites[col][i] = new CandySprite(col * gridSize, i * gridSize, newCandyImage);
     }
   }
 }
@@ -189,110 +182,54 @@ function swapCandies(candy1, candy2) {
   candy1.y = candy2.y;
   candy2.x = tempX;
   candy2.y = tempY;
+  
+  const col1 = Math.floor(candy1.x / gridSize);
+  const row1 = Math.floor(candy1.y / gridSize);
+  const col2 = Math.floor(candy2.x / gridSize);
+  const row2 = Math.floor(candy2.y / gridSize);
+  
+  [candySprites[col1][row1], candySprites[col2][row2]] = [candySprites[col2][row2], candySprites[col1][row1]];
+  
   console.log('Swapped candies:', candy1, candy2);
 }
 
-// Drag and drop functionality for both touch and mouse events
-if ('ontouchstart' in window) {
-  canvas.addEventListener('touchstart', (event) => { 
-    const touch = event.touches[0];
-    const mouseX = touch.clientX - canvas.offsetLeft;
-    const mouseY = touch.clientY - canvas.offsetTop;
+// Handle candy selection and swapping
+function handleCandySelection(x, y) {
+  const clickedCandy = findCandyAt(x, y);
   
-    selectedCandy = findCandyAt(mouseX, mouseY);
-    if (selectedCandy) {
-      selectedCandy.isDragging = true;
-      console.log('touchstart:', selectedCandy, mouseX, mouseY);
-      isDragging = true;
-    }
-  });
-  canvas.addEventListener('touchmove', (event) => {  
-    if (isDragging && selectedCandy) {
-      const touch = event.touches[0];
-      let newX = touch.clientX - canvas.offsetLeft - gridSize / 2;
-      let newY = touch.clientY - canvas.offsetTop - gridSize / 2;
-
-      // Constrain the sprite within the grid
-      newX = Math.max(0, Math.min(newX, (gridCols - 1) * gridSize));
-      newY = Math.max(0, Math.min(newY, (gridRows - 1) * gridSize));
-
-      selectedCandy.x = newX;
-      selectedCandy.y = newY;
-      drawCandy();
-    }
-  });
-  canvas.addEventListener('touchend', (event) => { 
-    if (selectedCandy) {
-      selectedCandy.isDragging = false;
-      isDragging = false;
-      console.log('touchend:', selectedCandy);
-
-      if (clickedCandy && canSwapCandies(selectedCandy, clickedCandy)) {
-        console.log('Swapping candies:', selectedCandy, clickedCandy);
-        secondSelectedCandy = clickedCandy;
-        swapCandies(selectedCandy, secondSelectedCandy);
-        checkForMatches();
-      }
-      selectedCandy = null;
-      secondSelectedCandy = null;
-    }
-
-    drawCandy();
-  });
-
-} else {
-  canvas.addEventListener('mousedown', (event) => {
-    const mouseX = event.clientX - canvas.offsetLeft;
-    const mouseY = event.clientY - canvas.offsetTop;
-  
-    selectedCandy = findCandyAt(mouseX, mouseY);
-    if (selectedCandy) {
-      selectedCandy.isDragging = true;
-      console.log('mousedown:', selectedCandy, mouseX, mouseY);
-      isDragging = true;
+  if (clickedCandy) {
+    if (!selectedCandy) {
+      selectedCandy = clickedCandy;
     } else {
-      console.log('No candy selected at mousedown:', mouseX, mouseY);
-    }
-  });
-
-  canvas.addEventListener('mouseup', (event) => { 
-    if (isDragging && selectedCandy) {
-      selectedCandy.isDragging = false;
-      isDragging = false;
-      console.log('mouseup:', selectedCandy);
-      
-      if (clickedCandy && canSwapCandies(selectedCandy, clickedCandy)) {
-        console.log('Swapping candies:', selectedCandy, clickedCandy);
-        secondSelectedCandy = clickedCandy;
-        swapCandies(selectedCandy, secondSelectedCandy);
-        checkForMatches();
+      if (canSwapCandies(selectedCandy, clickedCandy)) {
+        swapCandies(selectedCandy, clickedCandy);
+        if (!checkForMatches()) {
+          // If no matches, swap back
+          swapCandies(selectedCandy, clickedCandy);
+        }
+        selectedCandy = null;
+      } else {
+        selectedCandy = clickedCandy;
       }
-      selectedCandy = null;
-      secondSelectedCandy = null;
-    } else {
-      console.log('No candy selected at mouseup:', selectedCandy);
     }
     drawCandy();
-  });
-
-  canvas.addEventListener('mousemove', (event) => {   
-    if (isDragging && selectedCandy) {
-      console.log('mousemove:', selectedCandy);
-      let newX = event.clientX - canvas.offsetLeft - gridSize / 2;
-      let newY = event.clientY - canvas.offsetTop - gridSize / 2;
-      
-      // Constrain the sprite within the grid
-      newX = Math.max(0, Math.min(newX, (gridCols - 1) * gridSize));
-      newY = Math.max(0, Math.min(newY, (gridRows - 1) * gridSize));
-
-      selectedCandy.x = newX;
-      selectedCandy.y = newY;
-      drawCandy();
-    } else {
-      console.log('No candy being dragged at mousemove:', selectedCandy);
-    }
-  });
+  }
 }
+
+// Event listeners
+canvas.addEventListener('mousedown', (event) => {
+  const mouseX = event.clientX - canvas.offsetLeft;
+  const mouseY = event.clientY - canvas.offsetTop;
+  handleCandySelection(mouseX, mouseY);
+});
+
+canvas.addEventListener('touchstart', (event) => {
+  event.preventDefault();
+  const touch = event.touches[0];
+  const touchX = touch.clientX - canvas.offsetLeft;
+  const touchY = touch.clientY - canvas.offsetTop;
+  handleCandySelection(touchX, touchY);
+});
 
 // Initialize the canvas
 window.onload = function() {
